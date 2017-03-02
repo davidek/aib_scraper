@@ -1,0 +1,6 @@
+/venv
+/CREDENTIALS.json
+/__pycache__
+/ghostdriver.log
+/DIFF*
+/STATE*
