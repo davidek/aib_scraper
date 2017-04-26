@@ -8,10 +8,15 @@ STATE_FILE = 'STATE.pkl'
 
 def main():
     new = scraper.AIBScraper().scrape_all()
-    with open(STATE_FILE, 'rb') as f:
-        old = pickle.load(f)
-
-    ret = diff.diff_all(old, new)
+    try:
+        with open(STATE_FILE, 'rb') as f:
+            old = pickle.load(f)
+    except FileNotFoundError:
+        # No previous state: save the current state and return without diffing
+        ret = 0
+    else:
+        # old state available, perform the diff
+        ret = diff.diff_all(old, new)
 
     with open(STATE_FILE, 'wb') as f:
         pickle.dump(new, f)

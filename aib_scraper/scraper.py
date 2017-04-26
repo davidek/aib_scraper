@@ -1,7 +1,8 @@
 from collections import OrderedDict
+import datetime as dt
 from decimal import Decimal
 import re
-from typing import NamedTuple, Any, List
+from typing import NamedTuple, Any, List, Union
 
 from selenium import webdriver
 
@@ -13,12 +14,12 @@ class TryAgainException(Exception):
 
 
 class Transaction(NamedTuple):
-    date: str  # Union(str, dt.date)?
+    date: Union[str, dt.date]
     value: Decimal
     desc: str
 
     def __str__(self):
-        return f'{self.date}, {self.value} {self.desc}'
+        return f'{self.date.strftime("%a, %b %d")}, {self.value} {self.desc}'
 
 
 class AccountInfo(NamedTuple):
@@ -159,7 +160,7 @@ def _parse_transaction_table(table):
     # Stateful parsing: each item starts with a date row and has one row with 'Paid out' or 'Paid in'
     for row in rows:
         if 'date-row' in row.get_attribute('class').split():
-            date = _parse_datetime(row.text)
+            date = _parse_date(row.text)
         else:
             cells = [c.text.strip() for c in row.find_elements_by_css_selector('td')]
             assert not (cells[1] and cells[2])  # either Paid in, or Paid out
@@ -170,5 +171,24 @@ def _parse_transaction_table(table):
     return ret
 
 
-def _parse_datetime(datetime_str):
-    return datetime_str
+# {'Jan': 1, ...}
+_MONTHS = {s: i+1 for i, s in enumerate(
+    'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split())}
+
+
+def _parse_date(date):
+    """Tries to parse the date.
+
+    >>> _parse_date('Tuesday, 21st February 17')
+    datetime.date(2017, 1, 21)
+    """
+
+    if isinstance(date, str):
+        match = re.match(r'^[^ ]+ ([0-9]+).. ([^ ]+) ([0-9]+)', date)
+        if match is not None:
+            d, m, y = match[1], match[2], match[3]
+            d, m, y = int(d, base=10), _MONTHS[m[:3]], int(y, base=10)
+            if y < 100:
+                y += 2000
+            return dt.date(y, m, d)
+    return date
